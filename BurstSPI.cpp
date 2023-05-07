@@ -17,17 +17,56 @@ enum {
 #define SPI2_DMA_Stream DMA1_Stream7
 #define SPI2_DMA_TX_Request DMA_REQUEST_SPI2_TX
 #define SPI2_DMA_IRQHandler DMA1_Stream7_IRQHandler
-#elif defined(TARGET_STM32L4)
+#elif defined(TARGET_STM32L4) || defined(TARGET_STM32L5)
 #define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
 #define SPI1_DMA_IRQn DMA1_Channel3_IRQn
 #define SPI1_DMA_Stream DMA1_Channel3
+#if defined(DMAMUX1)
+#define SPI1_DMA_TX_Request DMA_REQUEST_SPI1_TX
+#else
 #define SPI1_DMA_TX_Request DMA_REQUEST_1
+#endif
 #define SPI1_DMA_IRQHandler DMA1_Channel3_IRQHandler
 #define SPI2_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
 #define SPI2_DMA_IRQn DMA1_Channel5_IRQn
 #define SPI2_DMA_Stream DMA1_Channel5
+#if defined(DMAMUX1)
+#define SPI2_DMA_TX_Request DMA_REQUEST_SPI2_TX
+#else
 #define SPI2_DMA_TX_Request DMA_REQUEST_1
+#endif
 #define SPI2_DMA_IRQHandler DMA1_Channel5_IRQHandler
+#elif defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+#define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA2_CLK_ENABLE()
+#define SPI1_DMA_IRQn DMA2_Stream3_IRQn
+#define SPI1_DMA_Stream DMA2_Stream3
+#define SPI1_DMA_TX_Request DMA_CHANNEL_3
+#define SPI1_DMA_IRQHandler DMA2_Stream3_IRQHandler
+#define SPI2_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
+#define SPI2_DMA_IRQn DMA1_Stream4_IRQn
+#define SPI2_DMA_Stream DMA1_Stream4
+#define SPI2_DMA_TX_Request DMA_CHANNEL_0
+#define SPI2_DMA_IRQHandler DMA1_Stream4_IRQHandler
+#elif defined(TARGET_STM32F1)
+#define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
+#define SPI1_DMA_IRQn DMA1_Channel3_IRQn
+#define SPI1_DMA_Stream DMA1_Channel3
+#define SPI1_DMA_IRQHandler DMA1_Channel3_IRQHandler
+#define SPI2_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
+#define SPI2_DMA_IRQn DMA1_Channel5_IRQn
+#define SPI2_DMA_Stream DMA1_Channel5
+#define SPI2_DMA_IRQHandler DMA1_Channel5_IRQHandler
+#elif defined(TARGET_STM32U5)
+#define SPI1_DMA_CLK_Enable() __HAL_RCC_GPDMA1_CLK_ENABLE()
+#define SPI1_DMA_IRQn GPDMA1_Channel6_IRQn
+#define SPI1_DMA_Stream GPDMA1_Channel6
+#define SPI1_DMA_TX_Request GPDMA1_REQUEST_SPI1_TX
+#define SPI1_DMA_IRQHandler GPDMA1_Channel6_IRQHandler
+#define SPI2_DMA_CLK_Enable() __HAL_RCC_GPDMA1_CLK_ENABLE()
+#define SPI2_DMA_IRQn GPDMA1_Channel7_IRQn
+#define SPI2_DMA_Stream GPDMA1_Channel7
+#define SPI2_DMA_TX_Request GPDMA1_REQUEST_SPI2_TX
+#define SPI2_DMA_IRQHandler GPDMA1_Channel7_IRQHandler
 #endif
 
 static SPI_HandleTypeDef *spi1_hspi = nullptr;
@@ -74,35 +113,62 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size) {
         hspi = &spiobj->handle;
         if(hspi->Instance == SPI1)
         {
+#if defined(DMAMUX1)
+            __HAL_RCC_DMAMUX1_CLK_ENABLE();
+#endif
             SPI1_DMA_CLK_Enable();
             spi1_hspi = hspi;
             hdma_tx = &spi1_hdma_tx;
             transfer_state = &spi1_transfer_state;
             hdma_tx->Instance = SPI1_DMA_Stream;
+#if defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+            hdma_tx->Init.Channel = SPI1_DMA_TX_Request;
+#elif !defined(TARGET_STM32F1)
             hdma_tx->Init.Request = SPI1_DMA_TX_Request;
+#endif
         }
         else if(hspi->Instance == SPI2)
         {
+#if defined(DMAMUX1)
+            __HAL_RCC_DMAMUX1_CLK_ENABLE();
+#endif
             SPI2_DMA_CLK_Enable();
             spi2_hspi = hspi;
             hdma_tx = &spi2_hdma_tx;
             transfer_state = &spi2_transfer_state;
             hdma_tx->Instance = SPI2_DMA_Stream;
-            hdma_tx->Init.Request = SPI1_DMA_TX_Request;
+#if defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+            hdma_tx->Init.Channel = SPI2_DMA_TX_Request;
+#elif !defined(TARGET_STM32F1)
+            hdma_tx->Init.Request = SPI2_DMA_TX_Request;
+#endif
         }
-#if defined(TARGET_STM32H7)
+#if defined(TARGET_STM32H7) || defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
         hdma_tx->Init.FIFOMode = DMA_FIFOMODE_DISABLE;
         hdma_tx->Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
         hdma_tx->Init.MemBurst = DMA_MBURST_SINGLE;
         hdma_tx->Init.PeriphBurst = DMA_MBURST_SINGLE;
 #endif
         hdma_tx->Init.Direction = DMA_MEMORY_TO_PERIPH;
+#if !defined(TARGET_STM32U5)
         hdma_tx->Init.PeriphInc = DMA_PINC_DISABLE;
         hdma_tx->Init.MemInc = DMA_MINC_ENABLE;
         hdma_tx->Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
         hdma_tx->Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-        hdma_tx->Init.Mode = DMA_NORMAL;
         hdma_tx->Init.Priority = DMA_PRIORITY_LOW;
+#else
+        hdma_tx->Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
+        hdma_tx->Init.SrcInc = DMA_SINC_INCREMENTED;
+        hdma_tx->Init.DestInc = DMA_DINC_FIXED;
+        hdma_tx->Init.SrcDataWidth = DMA_SRC_DATAWIDTH_BYTE;
+        hdma_tx->Init.DestDataWidth = DMA_DEST_DATAWIDTH_BYTE;
+        hdma_tx->Init.Priority = DMA_LOW_PRIORITY_HIGH_WEIGHT;
+        hdma_tx->Init.SrcBurstLength = 1;
+        hdma_tx->Init.DestBurstLength = 1;
+        hdma_tx->Init.TransferAllocatedPort = DMA_SRC_ALLOCATED_PORT1|DMA_DEST_ALLOCATED_PORT0;
+        hdma_tx->Init.TransferEventMode = DMA_TCEM_BLOCK_TRANSFER;
+#endif
+        hdma_tx->Init.Mode = DMA_NORMAL;
         HAL_DMA_Init(hdma_tx);
         __HAL_LINKDMA(hspi, hdmatx, *hdma_tx);
         if(hspi->Instance == SPI1)
