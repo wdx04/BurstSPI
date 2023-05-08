@@ -195,7 +195,10 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size) {
     {
         return false;
     }
-    return transfer_state->wait_any(TRANSFER_COMPLETE|TRANSFER_ERROR) == TRANSFER_COMPLETE;
+    sleep_manager_lock_deep_sleep();
+    bool transfer_complete = transfer_state->wait_any(TRANSFER_COMPLETE|TRANSFER_ERROR) == TRANSFER_COMPLETE;
+    sleep_manager_unlock_deep_sleep();
+    return transfer_complete;
 }
 
 extern "C" void SPI1_DMA_IRQHandler(void)
