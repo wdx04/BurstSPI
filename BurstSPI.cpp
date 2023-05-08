@@ -87,8 +87,6 @@ BurstSPI::~BurstSPI()
     {
         if(hspi == spi1_hspi)
         {
-            __HAL_RCC_SPI1_FORCE_RESET();
-            __HAL_RCC_SPI1_RELEASE_RESET();
             HAL_DMA_DeInit(&spi1_hdma_tx);
             HAL_NVIC_DisableIRQ(SPI1_DMA_IRQn);
             HAL_NVIC_DisableIRQ(SPI1_IRQn);
@@ -96,8 +94,6 @@ BurstSPI::~BurstSPI()
         }
         else if(hspi == spi2_hspi)
         {
-            __HAL_RCC_SPI2_FORCE_RESET();
-            __HAL_RCC_SPI2_RELEASE_RESET();
             HAL_DMA_DeInit(&spi2_hdma_tx);
             HAL_NVIC_DisableIRQ(SPI2_DMA_IRQn);
             HAL_NVIC_DisableIRQ(SPI2_IRQn);
@@ -106,7 +102,7 @@ BurstSPI::~BurstSPI()
     }
 }
 
-bool BurstSPI::fastWrite(const char *pData, uint16_t size) {
+bool BurstSPI::fastWrite(const char *pData, uint16_t size, bool blocking) {
     if(hspi == nullptr)
     {
         struct spi_s *spiobj = (struct spi_s *)(&(_peripheral->spi.spi));
@@ -195,8 +191,20 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size) {
     {
         return false;
     }
+    if(!blocking)
+    {
+        return true;
+    }
     sleep_manager_lock_deep_sleep();
-    bool transfer_complete = transfer_state->wait_any(TRANSFER_COMPLETE|TRANSFER_ERROR) == TRANSFER_COMPLETE;
+    bool transfer_complete = transfer_state->wait_any(TRANSFER_COMPLETE|TRANSFER_ERROR, osWaitForever, false) == TRANSFER_COMPLETE;
+    sleep_manager_unlock_deep_sleep();
+    return transfer_complete;
+}
+
+bool BurstSPI::getFastWriteResult()
+{
+    sleep_manager_lock_deep_sleep();
+    bool transfer_complete = transfer_state->wait_any(TRANSFER_COMPLETE|TRANSFER_ERROR, osWaitForever, false) == TRANSFER_COMPLETE;
     sleep_manager_unlock_deep_sleep();
     return transfer_complete;
 }
