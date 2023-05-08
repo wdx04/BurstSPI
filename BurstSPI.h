@@ -25,9 +25,23 @@ public:
     */
     BurstSPI(PinName mosi, PinName miso, PinName sclk);
 
+    /** Release the DMA resources
+    */
     ~BurstSPI();
 
-    bool fastWrite(const char *pData, uint16_t size);
+    /** Write to SPI slave using DMA
+    *    If blocking is set to false, the user may need to call getFastWriteResult before next fastWrite
+    *
+    *  @param pData pointer to the data to write
+    *  @param size length of data to write, in bytes
+    *  @param blocking if true, block current thread until transfer is finished
+    */
+    bool fastWrite(const char *pData, uint16_t size, bool blocking = true);
+
+    /** Block current thread and get the result of the last fastWrite call
+    *    return true if the last non-blocking fastWrite completed successfully
+    */
+    bool getFastWriteResult();
 
 protected:
     SPI_HandleTypeDef *hspi = nullptr;
