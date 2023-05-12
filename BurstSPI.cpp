@@ -17,7 +17,7 @@ enum {
 #define SPI2_DMA_Stream DMA1_Stream7
 #define SPI2_DMA_TX_Request DMA_REQUEST_SPI2_TX
 #define SPI2_DMA_IRQHandler DMA1_Stream7_IRQHandler
-#elif defined(TARGET_STM32L4) || defined(TARGET_STM32L5)
+#elif defined(TARGET_STM32L4) || defined(TARGET_STM32L5) || defined(TARGET_STM32G4)
 #define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
 #define SPI1_DMA_IRQn DMA1_Channel3_IRQn
 #define SPI1_DMA_Stream DMA1_Channel3
@@ -36,7 +36,7 @@ enum {
 #define SPI2_DMA_TX_Request DMA_REQUEST_1
 #endif
 #define SPI2_DMA_IRQHandler DMA1_Channel5_IRQHandler
-#elif defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+#elif defined(TARGET_STM32F2) || defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
 #define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA2_CLK_ENABLE()
 #define SPI1_DMA_IRQn DMA2_Stream3_IRQn
 #define SPI1_DMA_Stream DMA2_Stream3
@@ -47,7 +47,7 @@ enum {
 #define SPI2_DMA_Stream DMA1_Stream4
 #define SPI2_DMA_TX_Request DMA_CHANNEL_0
 #define SPI2_DMA_IRQHandler DMA1_Stream4_IRQHandler
-#elif defined(TARGET_STM32F1)
+#elif defined(TARGET_STM32F1) || defined(TARGET_STM32F3)
 #define SPI1_DMA_CLK_Enable() __HAL_RCC_DMA1_CLK_ENABLE()
 #define SPI1_DMA_IRQn DMA1_Channel3_IRQn
 #define SPI1_DMA_Stream DMA1_Channel3
@@ -109,7 +109,7 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size, bool blocking) {
         hspi = &spiobj->handle;
         if(hspi->Instance == SPI1)
         {
-#if defined(DMAMUX1)
+#if defined(__HAL_RCC_DMAMUX1_CLK_ENABLE)
             __HAL_RCC_DMAMUX1_CLK_ENABLE();
 #endif
             SPI1_DMA_CLK_Enable();
@@ -117,15 +117,15 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size, bool blocking) {
             hdma_tx = &spi1_hdma_tx;
             transfer_state = &spi1_transfer_state;
             hdma_tx->Instance = SPI1_DMA_Stream;
-#if defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+#if defined(TARGET_STM32F2) || defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
             hdma_tx->Init.Channel = SPI1_DMA_TX_Request;
-#elif !defined(TARGET_STM32F1)
+#elif !defined(TARGET_STM32F1) && !defined(TARGET_STM32F3)
             hdma_tx->Init.Request = SPI1_DMA_TX_Request;
 #endif
         }
         else if(hspi->Instance == SPI2)
         {
-#if defined(DMAMUX1)
+#if defined(__HAL_RCC_DMAMUX1_CLK_ENABLE)
             __HAL_RCC_DMAMUX1_CLK_ENABLE();
 #endif
             SPI2_DMA_CLK_Enable();
@@ -133,9 +133,9 @@ bool BurstSPI::fastWrite(const char *pData, uint16_t size, bool blocking) {
             hdma_tx = &spi2_hdma_tx;
             transfer_state = &spi2_transfer_state;
             hdma_tx->Instance = SPI2_DMA_Stream;
-#if defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
+#if defined(TARGET_STM32F2) || defined(TARGET_STM32F4) || defined(TARGET_STM32F7)
             hdma_tx->Init.Channel = SPI2_DMA_TX_Request;
-#elif !defined(TARGET_STM32F1)
+#elif !defined(TARGET_STM32F1) && !defined(TARGET_STM32F3)
             hdma_tx->Init.Request = SPI2_DMA_TX_Request;
 #endif
         }
